@@ -1,0 +1,16 @@
+# Built images, client binaries and generated AIDL output
+/out/
+/scripts/out/
+/backups/
+/lk-stock.img
+/lk-unlock/
+/.venv/
+
+# Python / editor / OS noise
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
