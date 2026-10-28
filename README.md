@@ -137,7 +137,7 @@ printf '%s  %s\n' \
 ```
 
 Require `OK`. Expected output size: **7,976,800 bytes**. The only main-LK payload
-change is `b8 ff ff 97` → `20 00 80 52` at raw offset `0x156A4`.
+change is `b8 ff ff 97` > `20 00 80 52` at raw offset `0x156A4`.
 The certificate override accounts for the container changes.
 
 The patcher does not enforce the stock hash or old instruction itself; the
@@ -407,7 +407,7 @@ assume an official update will retain the patch.
 <details>
 <summary>Patch mechanism, validation scope and supporting tools</summary>
 
-The normal chain is `preloader → BL2_EXT → LK → Android`. The patch replaces the
+The normal chain is `preloader > BL2_EXT > LK > Android`. The patch replaces the
 boot-time state check's call instruction at raw `0x156A4` with `mov w0, #1`.
 The stock store then sets the RAM flag at `state+0x104`. This opens the central
 fastboot gate and selects unlocked/orange reporting. Individual flash handlers
@@ -478,8 +478,7 @@ CVE-2026-43499 research. Image parsing and the override implementation depend on
 [R0rt1z2/liblk](https://github.com/R0rt1z2/liblk) and
 [georgiynesterov/lk-unlock](https://github.com/georgiynesterov/lk-unlock).
 Related work includes [R0rt1z2/lkpatcher](https://github.com/R0rt1z2/lkpatcher)
-and MediaTek boot-chain research. Device-specific analysis used Ghidra MCP;
-the separate BL2_EXT Unicorn harness provided offline corroboration.
+and MediaTek boot-chain research.
 
 The AIDL interface files retain their Apache-2.0 headers. The `lk-unlock` dependency remains under AGPL-3.0; if you redistribute a combined work, its terms apply.
 
