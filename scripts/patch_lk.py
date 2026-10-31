@@ -24,7 +24,7 @@ Dependencies:
   git clone https://github.com/georgiynesterov/lk-unlock   # AGPL-3.0
   export LK_UNLOCK=/path/to/lk-unlock/lk-unlock.py         # or put it in ./lk-unlock/
 
-The exact image used on the phone in this repository was produced with:
+Historical gate-only image (not the current qualified eight-patch recipe):
   patch_lk.py --in lk-stock.img --out out/lk-fbunlock-override.img \
       --patch 0x156A4:20008052 --bypass override \
       --report out/lk-fbunlock-override.json

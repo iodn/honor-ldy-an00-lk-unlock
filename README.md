@@ -6,8 +6,8 @@ and test a patched LK on **slot B**, then uses that verified fastboot session to
 install the same patch on **slot A**.
 
 **Status:** the patched LK booted on both slots of one physical device. Fastboot
-reported `FB LockState: UNLOCKED`, and stock Android booted with an unlocked boot
-state. The persistent OEM/TEE `USER LockState` remained `LOCKED`.
+reported `FB LockState: UNLOCKED`, and stock Android booted with green/locked reporting. These reported
+values are modified by the patch and do not establish verified-boot security. The persistent OEM/TEE `USER LockState` remained `LOCKED`.
 
 > **Advanced, firmware-specific procedure.** An incorrect write can permanently
 > brick the phone. B-first testing preserves a stock A copy until the final stage;
@@ -19,7 +19,7 @@ state. The persistent OEM/TEE `USER LockState` remained `LOCKED`.
 | Capability | Result |
 | --- | --- |
 | Fastboot policy gate | Open when the patched LK runs; individual handlers retain their own checks |
-| Android boot-state reporting | `orange`, `vbmeta.device_state=unlocked`, `flash.locked=0` |
+| Android boot-state reporting | `green`, `vbmeta.device_state=locked`, `flash.locked=1` (modified reporting) |
 | Reboot persistence | The modification remains in each patched LK partition until overwritten |
 | Persistent OEM/TEE unlock record | Unchanged: `USER LockState: LOCKED`; `getvar unlocked: no` |
 | Secure boot | Still enabled; `getvar secure: yes` |
@@ -63,14 +63,14 @@ and Android API 34. Install USB permissions appropriate to the host.
 python3 -m venv .venv
 . .venv/bin/activate
 python3 -m pip install cryptography pyasn1 pyusb
-python3 -m pip install 'git+https://github.com/R0rt1z2/liblk'
+python3 -m pip install 'git+https://github.com/R0rt1z2/liblk@75c8f14f16457b6c53d950d18d1ed7d2a665bed6'
 git clone https://github.com/georgiynesterov/lk-unlock.git lk-unlock
+git -C lk-unlock checkout 091fc7a18a6cc7063ec4445c4f5c08ab753195a0
 export LK_UNLOCK="$PWD/lk-unlock/lk-unlock.py"
 ```
 
-The firmware images and external dependencies are not bundled. Dependency
-revisions are not pinned in this snapshot; an upstream change may require
-review. **The exact candidate hash below is mandatory**, even if a newer tool
+The firmware images and external dependencies are not bundled. The parser and certificate-bypass revisions above are pinned and were
+used to reproduce the exact image. Do not substitute upstream HEAD. **The exact candidate hash below is mandatory**, even if a newer tool
 reports success.
 
 Supply the exact firmware's stock LK container as `lk-stock.img`. It is smaller
@@ -128,16 +128,32 @@ python3 scripts/patch_lk.py \
   --in lk-stock.img \
   --out out/lk-fbunlock-override.img \
   --patch 0x156A4:20008052 \
+  --patch 0x156D8:7f0e01b9 \
+  --patch 0x15910:14000014 \
+  --patch 0x1259D0:1f810db9 \
+  --patch 0xF0D04:81008052 \
+  --patch 0x138E7C:e20308aa \
+  --patch 0x17D10:0d000014 \
+  --patch 0x24D44:03008052 \
   --bypass override \
   --report out/lk-fbunlock-override.json
 
 printf '%s  %s\n' \
-  e771f241dc7f445a2ea4a39989cb1fb81b0ba91f61039497729ec24ca553afe1 \
+  a2d1c3a7f0afcc87c19fff5daceed5e92b3f15b9a3306f088045f211c654dfc6 \
   out/lk-fbunlock-override.img | sha256sum --check
 ```
 
-Require `OK`. Expected output size: **7,976,800 bytes**. The only main-LK payload
-change is `b8 ff ff 97` > `20 00 80 52` at raw offset `0x156A4`.
+Run the offline recipe regression check before continuing:
+
+```bash
+python3 scripts/test_recipe.py --stock lk-stock.img
+```
+
+Require `LK_7D_EXACT_RECIPE_EXECUTOR_README_PASS`.
+
+Require `OK`. Expected output size: **7,976,800 bytes**. Eight instruction patches open the fastboot gate, modify green/locked reporting,
+and disable the stock bootfail watchdog that otherwise resets LineageOS after
+about ten minutes.
 The certificate override accounts for the container changes.
 
 The patcher does not enforce the stock hash or old instruction itself; the
@@ -208,7 +224,7 @@ python3 scripts/executor.py write-b --execute --authorized-trial --confirm-write
 Require:
 
 ```text
-WRITE_B_OK a6a1ab4b6c55053887a0a18a52723bb48514a42bc45a507087ded09917385d81
+WRITE_B_OK 7d8762ef876b29542e66d0e717cd9af253602b3d86e93e7780ef5c2eb3686eae
 ```
 
 This is the expected SHA-256 of the **full 16 MiB B partition**, not the shorter
@@ -270,8 +286,8 @@ adb shell getprop ro.boot.vbmeta.device_state
 adb shell getprop ro.boot.flash.locked
 ```
 
-Wait for Android to finish booting. Require `1`, `_b`, `orange`, `unlocked` and
-`0`, respectively. Temporary GhostLock root is lost on this reboot; that is
+Wait for Android to finish booting. Require `1`, `_b`, `green`, `locked` and
+`1`, respectively. Temporary GhostLock root is lost on this reboot; that is
 expected. If B does not boot normally, **do not patch A**.
 
 ## 7. Prepare a full-size image for A
@@ -285,10 +301,10 @@ from pathlib import Path
 import hashlib
 src = Path('out/lk-fbunlock-override.img').read_bytes()
 if (len(src) != 7976800 or hashlib.sha256(src).hexdigest() !=
-        'e771f241dc7f445a2ea4a39989cb1fb81b0ba91f61039497729ec24ca553afe1'):
+        'a2d1c3a7f0afcc87c19fff5daceed5e92b3f15b9a3306f088045f211c654dfc6'):
     raise SystemExit('STOP: candidate mismatch')
 image = src.ljust(16777216, b'\0')
-expected = 'a6a1ab4b6c55053887a0a18a52723bb48514a42bc45a507087ded09917385d81'
+expected = '7d8762ef876b29542e66d0e717cd9af253602b3d86e93e7780ef5c2eb3686eae'
 if hashlib.sha256(image).hexdigest() != expected:
     raise SystemExit('STOP: full-size image mismatch')
 Path('out/lk-unlocked-16MiB.img').write_bytes(image)
@@ -296,7 +312,7 @@ print('A_IMAGE_OK', len(image), expected)
 PREPARE_A
 ```
 
-Require `A_IMAGE_OK 16777216 a6a1ab4b…`. Do not use a differently padded image.
+Require `A_IMAGE_OK 16777216 7d8762ef…`. Do not use a differently padded image.
 
 ## 8. Flash A from the verified B bootloader
 
@@ -317,7 +333,7 @@ python3 scripts/fastboot_dump.py --partition lk_a --expected-len 16777216 \
   --expected-sha 989e70603748b88f788e9342f0504722895b8bfd20674b33f9f30331650aecf5 \
   --out out/lk_a-before.wire
 python3 scripts/fastboot_dump.py --partition lk_b --expected-len 16777216 \
-  --expected-sha a6a1ab4b6c55053887a0a18a52723bb48514a42bc45a507087ded09917385d81 \
+  --expected-sha 7d8762ef876b29542e66d0e717cd9af253602b3d86e93e7780ef5c2eb3686eae \
   --out out/lk_b-before.wire
 ```
 
@@ -337,10 +353,10 @@ slots or reboot until independent readback succeeds:
 
 ```bash
 python3 scripts/fastboot_dump.py --partition lk_a --expected-len 16777216 \
-  --expected-sha a6a1ab4b6c55053887a0a18a52723bb48514a42bc45a507087ded09917385d81 \
+  --expected-sha 7d8762ef876b29542e66d0e717cd9af253602b3d86e93e7780ef5c2eb3686eae \
   --out out/lk_a-after.wire
 python3 scripts/fastboot_dump.py --partition lk_b --expected-len 16777216 \
-  --expected-sha a6a1ab4b6c55053887a0a18a52723bb48514a42bc45a507087ded09917385d81 \
+  --expected-sha 7d8762ef876b29542e66d0e717cd9af253602b3d86e93e7780ef5c2eb3686eae \
   --out out/lk_b-after.wire
 ```
 
@@ -371,7 +387,7 @@ adb shell getprop ro.boot.verifiedbootstate
 adb shell getprop ro.boot.flash.locked
 ```
 
-After startup, require `1`, `_a`, `orange` and `0`. Both slots now contain the
+After startup, require `1`, `_a`, `green` and `1`. Both slots now contain the
 patched LK. Booting each slot was demonstrated on the test device; it does not
 prove that a failed boot will recover automatically on another phone.
 
@@ -410,22 +426,25 @@ assume an official update will retain the patch.
 The normal chain is `preloader > BL2_EXT > LK > Android`. The patch replaces the
 boot-time state check's call instruction at raw `0x156A4` with `mov w0, #1`.
 The stock store then sets the RAM flag at `state+0x104`. This opens the central
-fastboot gate and selects unlocked/orange reporting. Individual flash handlers
+fastboot gate. Seven additional instruction patches force green/locked
+reporting, user OEM mode and bootfail watchdog control zero. Individual flash handlers
 still enforce their own rules; this is not permission to flash every partition.
 
-The main LK payload changes by four bytes. An unsigned 90-byte CERT2 prefix
+The main LK payload changes at eight instruction sites. An unsigned 90-byte CERT2 prefix
 supplies its new hashes through BL2_EXT's certificate-extraction scope reset,
 while preserving the stock signed TBS. The resulting container is 80 bytes
 larger after packing/alignment. CERT1 and the other component payloads remain
 stock. The persistent oeminfo `0x82` record, TEE lock and secure-boot root are
-not rewritten.
+not rewritten. Green/locked properties are modified reports, not a guarantee
+of AVB enforcement or Play Integrity. The patched gate already permits AVB
+verification errors; this does not restore OEM security.
 
 | Artifact | Bytes | SHA-256 |
 | --- | ---: | --- |
 | Stock container | 7,976,720 | `4a2758f3da93142b08059f140c02fd8c4540ff98890081d3e4475f28c9f28f67` |
-| Patched container | 7,976,800 | `e771f241dc7f445a2ea4a39989cb1fb81b0ba91f61039497729ec24ca553afe1` |
+| Patched container | 7,976,800 | `a2d1c3a7f0afcc87c19fff5daceed5e92b3f15b9a3306f088045f211c654dfc6` |
 | Stock full LK partition | 16,777,216 | `989e70603748b88f788e9342f0504722895b8bfd20674b33f9f30331650aecf5` |
-| Patched full LK partition | 16,777,216 | `a6a1ab4b6c55053887a0a18a52723bb48514a42bc45a507087ded09917385d81` |
+| Patched full LK partition | 16,777,216 | `7d8762ef876b29542e66d0e717cd9af253602b3d86e93e7780ef5c2eb3686eae` |
 
 Hardware evidence covers B installation/activation, B fastboot and Android,
 A fastboot flashing with full-partition readback, and A fastboot and Android.
