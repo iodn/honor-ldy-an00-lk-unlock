@@ -14,26 +14,6 @@ values are modified by the patch and do not establish verified-boot security. Th
 > patching A removes that stock recovery candidate. Physical fallback after a
 > failed LK authentication has not been demonstrated. Verified backups are required.
 
-## What the patch provides
-
-| Capability | Result |
-| --- | --- |
-| Fastboot policy gate | Open when the patched LK runs; individual handlers retain their own checks |
-| Android boot-state reporting | `green`, `vbmeta.device_state=locked`, `flash.locked=1` (modified reporting) |
-| Reboot persistence | The modification remains in each patched LK partition until overwritten |
-| Persistent OEM/TEE unlock record | Unchanged: `USER LockState: LOCKED`; `getvar unlocked: no` |
-| Secure boot | Still enabled; `getvar secure: yes` |
-| Android root | Separate; this LK patch does not install Magisk, KernelSU or persistent root |
-| Official firmware updates | Can replace LK and remove the patch |
-
-Patch both slots only after B has been independently verified. This is not an
-official unlock token, a generic MediaTek method, or protection against firmware
-updates that overwrite the bootloader.
-
-Official downloads and GhostLock status are listed in the
-[firmware table](https://github.com/iodn/honor-ldy-an00-ghostlock#firmware-downloads-and-ghostlock-status).
-Their LK images are not automatically compatible with this patch.
-
 ## Tested starting point
 
 | Item | Required value for the initial B stage |
@@ -191,6 +171,11 @@ usable alternatives for this procedure.
 
 ## 3. Build the boot-control clients
 
+Release-bundle users skip this step.
+
+<details>
+<summary>Build the clients from source</summary>
+
 Set `ANDROID_NDK_HOME` to the installed NDK directory and `AIDL` to the AIDL
 executable, or make `aidl` available in `PATH`. Then:
 
@@ -215,6 +200,8 @@ export LK_MUTATION_CLIENT_SHA="$(sha256sum scripts/out/inactive_b_client_ver | a
 Do this only after reviewing the source and toolchain. A hash of a local binary
 establishes its identity, not its correctness. Do not replace the pin to accept
 an unexplained mismatch or an untrusted downloaded binary.
+
+</details>
 
 ## 4. Obtain temporary root and run preflight
 
@@ -447,6 +434,22 @@ a working fastboot session; it is not a remedy for failure before LK starts.
 BROM/DA recovery may require vendor authentication. Do not relock the device or
 assume an official update will retain the patch.
 
+## What the patch provides
+
+| Capability | Result |
+| --- | --- |
+| Fastboot policy gate | Open when the patched LK runs; individual handlers retain their own checks |
+| Android boot-state reporting | `green`, `vbmeta.device_state=locked`, `flash.locked=1` (modified reporting) |
+| Reboot persistence | The modification remains in each patched LK partition until overwritten |
+| Persistent OEM/TEE unlock record | Unchanged: `USER LockState: LOCKED`; `getvar unlocked: no` |
+| Secure boot | Still enabled; `getvar secure: yes` |
+| Android root | Separate; this LK patch does not install Magisk, KernelSU or persistent root |
+| Official firmware updates | Can replace LK and remove the patch |
+
+Patch both slots only after B has been independently verified. This is not an
+official unlock token, a generic MediaTek method, or protection against firmware
+updates that overwrite the bootloader.
+
 ## Technical reference
 
 <details>
@@ -520,6 +523,9 @@ Changes to image generation, state expectations or write/activation handling
 require review before another hardware trial.
 
 ## Credits and license
+
+[Official HONOR firmware downloads](https://github.com/iodn/honor-ldy-an00-ghostlock#firmware-downloads-and-ghostlock-status).
+
 
 Temporary root comes from the companion LDY-AN00 GhostLock port and public
 CVE-2026-43499 research. Image parsing and the override implementation depend on
