@@ -52,12 +52,37 @@ alone is insufficient. Do not edit its expected state to bypass a rejection.
 Use one connected phone only. The executor does not expose a serial selector;
 for these instructions, disconnect other ADB and fastboot devices.
 
+## Prebuilt release
+
+Download `honor-ldy-an00-lk-unlock-v1.0.0-linux.zip` and `SHA256SUMS` from
+[Releases](https://github.com/iodn/honor-ldy-an00-lk-unlock/releases/tag/v1.0.0).
+Verify and extract them:
+
+```bash
+sha256sum -c SHA256SUMS
+unzip honor-ldy-an00-lk-unlock-v1.0.0-linux.zip
+cd honor-ldy-an00-lk-unlock-v1.0.0-linux
+source scripts/use_prebuilt.sh
+```
+
+The release includes both ARM64 boot-control clients. They were built from this
+repository using NDK 27.0.12077973 and Android build-tools 35.0.0. The selector
+checks both exact hashes and pins the mutation client for this build; the
+phone-tested reference build remains documented below. This is an offline
+qualified rebuild, not a new hardware unlock trial.
+
+Follow the steps below, but **skip step 3**: no NDK, AIDL compiler or client
+compilation is required for the release bundle. The Python dependencies, matching
+stock LK input and verified backups are still required. No proprietary firmware
+image is included.
+
 ## 1. Prepare tools and verified inputs
 
 Required host tools: Python 3 with virtual-environment support, Git, `adb`,
-`fastboot`, `sha256sum`, an Android AIDL compiler and Android NDK
-**27.0.12077973**. The client build defaults to the Linux x86_64 NDK toolchain
-and Android API 34. Install USB permissions appropriate to the host.
+`fastboot` and `sha256sum`. Source builds additionally need an Android AIDL
+compiler and NDK **27.0.12077973**; release bundles include the clients. The client
+build defaults to the Linux x86_64 NDK toolchain and Android API 34. Install USB
+permissions appropriate to the host.
 
 ```bash
 python3 -m venv .venv
