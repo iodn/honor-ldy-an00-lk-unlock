@@ -30,7 +30,8 @@ Patch both slots only after B has been independently verified. This is not an
 official unlock token, a generic MediaTek method, or protection against firmware
 updates that overwrite the bootloader.
 
-See the [GhostLock firmware table](https://github.com/iodn/honor-ldy-an00-ghostlock#firmware-downloads-and-ghostlock-status) for vulnerable versions.
+Official downloads and GhostLock status are listed in the
+[firmware table](https://github.com/iodn/honor-ldy-an00-ghostlock#firmware-downloads-and-ghostlock-status).
 Their LK images are not automatically compatible with this patch.
 
 ## Tested starting point
