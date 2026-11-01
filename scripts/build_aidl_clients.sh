@@ -42,7 +42,8 @@ echo "[*] generating NDK AIDL headers"
 build() {
     local src="$1" out="$2"
     echo "[*] compiling $src"
-    "$CXX" -O2 -std=c++17 -fPIE -pie -static-libstdc++ -I "$GEN" \
+    "$CXX" -O2 -std=c++17 -fPIE -pie -static-libstdc++ \
+        -ffile-prefix-map="$PWD"=. -ffile-prefix-map="$NDK"=/android-ndk -I "$GEN" \
         -o "$OUT/$out" "$src" \
         "$GEN/android/hardware/boot/IBootControl.cpp" \
         "$GEN/android/hardware/boot/MergeStatus.cpp" \
