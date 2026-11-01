@@ -1,7 +1,7 @@
 # LK unlock patch for HONOR LDY-AN00
 
 Bootloader patching tools for the **HONOR Magic8 Pro Air (LDY-AN00)** on
-MagicOS **10.0.0.113(C00E100R101P1)**. The workflow uses temporary root to install
+the tested MagicOS **10.0.0.113(C00E100R101P1)** baseline. The workflow uses temporary root to install
 and test a patched LK on **slot B**, then uses that verified fastboot session to
 install the same patch on **slot A**.
 
@@ -30,13 +30,16 @@ Patch both slots only after B has been independently verified. This is not an
 official unlock token, a generic MediaTek method, or protection against firmware
 updates that overwrite the bootloader.
 
-## Supported starting point
+GhostLock's vulnerable code was also found in **10.0.0.170**, and older releases
+may be affected. This does not qualify their LK images for this patch.
+
+## Tested starting point
 
 | Item | Required value for the initial B stage |
 | --- | --- |
 | Model / stock device | `LDY-AN00` / `HNLDY-M` |
 | SoC | MediaTek MT6993 |
-| Firmware | `10.0.0.113(C00E100R101P1)` |
+| Tested firmware | `10.0.0.113(C00E100R101P1)` |
 | Android | 16 |
 | Kernel | `6.12.38-android16-5-g4b3671e1f5b7-abogki460618149-4k` |
 | Running slot | Stock A, green, locked and marked successful |
